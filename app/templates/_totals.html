@@ -1,0 +1,7 @@
+<table class="totals">
+  <tr><th>Ara toplam</th><td>{{ totals.net|money(currency) }}</td></tr>
+  {% for rate, amount in totals.vat_by_rate.items() %}
+  <tr><th>KDV %{{ rate }}</th><td>{{ amount|money(currency) }}</td></tr>
+  {% endfor %}
+  <tr class="grand"><th>Genel toplam</th><td>{{ totals.gross|money(currency) }}</td></tr>
+</table>

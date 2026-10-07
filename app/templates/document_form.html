@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Yeni {{ KIND_TR[kind]|lower }}{% endblock %}
+{% block content %}
+<h1>Yeni {{ KIND_TR[kind]|lower }}</h1>
+{% if error %}<p class="error" id="form-error">{{ error }}</p>{% endif %}
+<form id="doc-form" method="post" action="/documents" class="card stack"
+      hx-post="/documents/totals" hx-trigger="input delay:300ms, itemschanged"
+      hx-target="#totals" hx-swap="innerHTML">
+  <input type="hidden" name="kind" value="{{ kind }}">
+  <div class="grid4">
+    <label>Müşteri
+      <select name="client_id">
+        <option value="">— seçilmedi —</option>
+        {% for c in clients %}
+        <option value="{{ c.id }}" {{ "selected" if c.id|string == client_id }}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Para birimi
+      <select name="currency">
+        {% for cur in currencies %}<option {{ "selected" if cur == currency }}>{{ cur }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Vade tarihi <input type="date" name="due_date" value="{{ due_date }}"></label>
+  </div>
+
+  <table class="list items">
+    <thead><tr><th>Açıklama</th><th>Adet</th><th>Birim fiyat</th><th>KDV %</th><th></th></tr></thead>
+    <tbody id="items">
+      {% for row in rows %}{% include "_item_row.html" %}{% endfor %}
+    </tbody>
+  </table>
+  <div>
+    <button type="button" class="secondary" hx-get="/documents/row" hx-target="#items" hx-swap="beforeend"
+            hx-trigger="click" hx-on::after-request="htmx.trigger('#doc-form', 'itemschanged')">+ Kalem ekle</button>
+  </div>
+
+  <label>Not <textarea name="notes" rows="2">{{ notes }}</textarea></label>
+
+  <div id="totals">{% include "_totals.html" %}</div>
+
+  <div>
+    <button type="submit">Kaydet</button>
+    <a class="btn secondary" href="/documents">Vazgeç</a>
+  </div>
+</form>
+{% endblock %}

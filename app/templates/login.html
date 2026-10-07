@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Giriş{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Giriş yap</h1>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <form method="post" action="/login" class="stack">
+    <label>E-posta <input type="email" name="email" required autocomplete="username"></label>
+    <label>Parola <input type="password" name="password" required autocomplete="current-password"></label>
+    <button type="submit">Giriş</button>
+  </form>
+  {% if dev_login %}
+  <p class="muted">Geliştirme modu: <a href="/dev-login">Supabase olmadan giriş yap</a></p>
+  {% endif %}
+</section>
+{% endblock %}

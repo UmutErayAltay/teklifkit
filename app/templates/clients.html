@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Müşteriler{% endblock %}
+{% block content %}
+<h1>Müşteriler</h1>
+<section class="card">
+  <form class="grid4" hx-post="/clients" hx-target="#client-list" hx-swap="beforeend"
+        hx-on::after-request="if (event.detail.successful) this.reset()">
+    <label>Ad <input name="name" required maxlength="200"></label>
+    <label>E-posta <input type="email" name="email"></label>
+    <label>Vergi no <input name="tax_id"></label>
+    <label>Adres <input name="address"></label>
+    <button type="submit">Müşteri ekle</button>
+  </form>
+</section>
+<table class="list">
+  <thead><tr><th>Ad</th><th>E-posta</th><th>Vergi no</th><th></th></tr></thead>
+  <tbody id="client-list">
+    {% for c in clients %}{% include "_client_row.html" %}{% endfor %}
+  </tbody>
+</table>
+{% if not clients %}<p class="muted">Henüz müşteri yok.</p>{% endif %}
+{% endblock %}

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}teklifkit{% endblock %} · teklifkit</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">teklifkit</a>
+    {% if user %}
+    <nav>
+      <a href="/documents">Teklif &amp; Faturalar</a>
+      <a href="/clients">Müşteriler</a>
+    </nav>
+    <form method="post" action="/logout" class="logout">
+      <span class="muted">{{ user.email or user.id[:8] }}</span>
+      <button class="link" type="submit">Çıkış</button>
+    </form>
+    {% endif %}
+  </header>
+  <main>
+    <div id="flash" class="flash" role="alert" hidden></div>
+    {% block content %}{% endblock %}
+  </main>
+  <script>
+    // HTMX 4xx/5xx yanıtlarında hata mesajını göster (varsayılan olarak sessiz kalır).
+    document.body.addEventListener("htmx:responseError", function (e) {
+      var box = document.getElementById("flash");
+      var text = e.detail.xhr.responseText || "";
+      try { text = JSON.parse(text).detail || text; } catch (_) {}
+      box.textContent = text || "İstek başarısız oldu.";
+      box.hidden = false;
+    });
+  </script>
+</body>
+</html>

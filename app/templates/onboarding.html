@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}İşletmeni oluştur{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>İşletmeni oluştur</h1>
+  <p class="muted">Tekliflerin ve faturaların altında görünecek ad. Sonradan değiştirilebilir.</p>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <form method="post" action="/onboarding" class="stack">
+    <label>İşletme adı <input name="name" required maxlength="120" autofocus></label>
+    <button type="submit">Oluştur</button>
+  </form>
+</section>
+{% endblock %}

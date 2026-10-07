@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Teklif &amp; Faturalar{% endblock %}
+{% block content %}
+<div class="row-between">
+  <h1>Teklif &amp; Faturalar</h1>
+  <div>
+    <a class="btn" href="/documents/new?kind=quote">+ Teklif</a>
+    <a class="btn secondary" href="/documents/new?kind=invoice">+ Fatura</a>
+  </div>
+</div>
+{% if docs %}
+<table class="list">
+  <thead><tr><th>No</th><th>Tür</th><th>Müşteri</th><th>Tarih</th><th>Durum</th><th class="right">Toplam</th></tr></thead>
+  <tbody>
+    {% for d in docs %}
+    <tr>
+      <td><a href="/documents/{{ d.id }}">{{ d|doc_no }}</a></td>
+      <td>{{ KIND_TR[d.kind] }}</td>
+      <td>{{ d.client_name or "—" }}</td>
+      <td>{{ d.issue_date|tr_date }}</td>
+      <td><span class="badge {{ d.status }}">{{ d.status|status_tr }}</span></td>
+      <td class="right">{{ d.totals.gross|money(d.currency) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">Henüz belge yok. İlk teklifini oluştur.</p>
+{% endif %}
+{% endblock %}

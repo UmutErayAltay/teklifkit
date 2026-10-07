@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ doc|doc_no }}{% endblock %}
+{% block content %}
+<div class="row-between">
+  <h1>{{ KIND_TR[doc.kind] }} {{ doc|doc_no }} <span class="badge {{ doc.status }}">{{ doc.status|status_tr }}</span></h1>
+  <a class="btn secondary" href="/documents">← Liste</a>
+</div>
+<section class="card meta">
+  <div><span class="muted">Müşteri</span><br>
+    {% if doc.client_name %}<strong>{{ doc.client_name }}</strong>
+    {% if doc.client_tax_id %}<br>VN: {{ doc.client_tax_id }}{% endif %}
+    {% if doc.client_email %}<br>{{ doc.client_email }}{% endif %}
+    {% if doc.client_address %}<br>{{ doc.client_address }}{% endif %}
+    {% else %}—{% endif %}</div>
+  <div><span class="muted">Düzenlenme</span><br>{{ doc.issue_date|tr_date }}</div>
+  <div><span class="muted">Vade</span><br>{{ doc.due_date|tr_date }}</div>
+</section>
+<table class="list">
+  <thead><tr><th>Açıklama</th><th class="right">Adet</th><th class="right">Birim fiyat</th><th class="right">KDV</th><th class="right">Net</th></tr></thead>
+  <tbody>
+    {% for i in items %}
+    <tr>
+      <td>{{ i.description }}</td>
+      <td class="right">{{ i.qty|qty_fmt }}</td>
+      <td class="right">{{ i.unit_price|money(doc.currency) }}</td>
+      <td class="right">%{{ i.vat_rate }}</td>
+      <td class="right">{{ i.net|money(doc.currency) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% with currency = doc.currency %}{% include "_totals.html" %}{% endwith %}
+{% if doc.notes %}<p class="muted">{{ doc.notes }}</p>{% endif %}
+{% endblock %}

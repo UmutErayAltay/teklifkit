@@ -1,0 +1,9 @@
+<tr>
+  <td>{{ c.name }}</td>
+  <td>{{ c.email or "—" }}</td>
+  <td>{{ c.tax_id or "—" }}</td>
+  <td class="right">
+    <button class="link danger" hx-delete="/clients/{{ c.id }}" hx-target="closest tr" hx-swap="outerHTML"
+            hx-confirm="{{ c.name }} silinsin mi?">Sil</button>
+  </td>
+</tr>

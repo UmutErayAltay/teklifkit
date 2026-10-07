@@ -1,0 +1,12 @@
+<tr>
+  <td><input name="description" value="{{ row.description }}" maxlength="500" placeholder="Hizmet / ürün"></td>
+  <td><input name="qty" value="{{ row.qty }}" inputmode="decimal" class="num"></td>
+  <td><input name="unit_price" value="{{ row.unit_price }}" inputmode="decimal" class="num" placeholder="0,00"></td>
+  <td>
+    <select name="vat_rate">
+      {% for r in VAT_RATES %}<option value="{{ r }}" {{ "selected" if r|string == row.vat_rate|string }}>{{ r }}</option>{% endfor %}
+    </select>
+  </td>
+  <td><button type="button" class="link danger"
+              hx-on:click="var f = this.closest('form'); this.closest('tr').remove(); htmx.trigger(f, 'itemschanged')">Kaldır</button></td>
+</tr>
