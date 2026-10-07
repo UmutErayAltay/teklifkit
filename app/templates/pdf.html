@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>{{ v.no }}</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  body { font-family: "DejaVu Sans", sans-serif; font-size: 10pt; color: #1b2430; }
+  h1 { font-size: 18pt; margin: 0 0 2mm; }
+  .head { display: flex; justify-content: space-between; margin-bottom: 8mm; }
+  .muted { color: #667085; }
+  .org { font-size: 12pt; font-weight: bold; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 8pt; color: #667085; border-bottom: 1.5px solid #1b2430; padding: 2mm 1mm; }
+  td { padding: 2mm 1mm; border-bottom: 0.5px solid #dfe3ea; vertical-align: top; }
+  .r { text-align: right; }
+  .totals { width: 70mm; margin: 6mm 0 0 auto; }
+  .totals td, .totals th { border: 0; padding: 1mm; color: inherit; font-size: 10pt; text-align: left; }
+  .totals td { text-align: right; }
+  .grand th, .grand td { font-size: 12pt; font-weight: bold; border-top: 1px solid #1b2430; }
+  .notes { margin-top: 8mm; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <div>
+      <div class="org">{{ v.org_name }}</div>
+      <h1>{{ KIND_TR[v.kind] }} {{ v.no }}</h1>
+      <div class="muted">Düzenlenme: {{ v.issue_date|tr_date }}{% if v.due_date %} · Vade: {{ v.due_date|tr_date }}{% endif %}</div>
+    </div>
+    <div>
+      {% if v.client %}
+      <div class="muted">Müşteri</div>
+      <strong>{{ v.client.name }}</strong>
+      {% if v.client.tax_id %}<br>VN: {{ v.client.tax_id }}{% endif %}
+      {% if v.client.address %}<br>{{ v.client.address }}{% endif %}
+      {% if v.client.email %}<br>{{ v.client.email }}{% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Açıklama</th><th class="r">Adet</th><th class="r">Birim fiyat</th><th class="r">KDV</th><th class="r">Net</th></tr></thead>
+    <tbody>
+      {% for i in v.items %}
+      <tr>
+        <td>{{ i.description }}</td>
+        <td class="r">{{ i.qty|qty_fmt }}</td>
+        <td class="r">{{ i.unit_price|money(v.currency) }}</td>
+        <td class="r">%{{ i.vat_rate }}</td>
+        <td class="r">{{ i.net|money(v.currency) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr><th>Ara toplam</th><td>{{ v.totals.net|money(v.currency) }}</td></tr>
+    {% for rate, amount in v.totals.vat_by_rate.items() %}
+    <tr><th>KDV %{{ rate }}</th><td>{{ amount|money(v.currency) }}</td></tr>
+    {% endfor %}
+    <tr class="grand"><th>Genel toplam</th><td>{{ v.totals.gross|money(v.currency) }}</td></tr>
+    {% if v.kind == "invoice" and v.paid > 0 %}
+    <tr><th>Ödenen</th><td>{{ v.paid|money(v.currency) }}</td></tr>
+    <tr><th>Kalan</th><td>{{ v.balance|money(v.currency) }}</td></tr>
+    {% endif %}
+  </table>
+
+  {% if v.notes %}<div class="notes muted">{{ v.notes }}</div>{% endif %}
+</body>
+</html>

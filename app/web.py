@@ -33,6 +33,11 @@ def money(value: Decimal | int | float | str, currency: str = "TRY") -> str:
     return f"{text} {SYMBOLS.get(currency, currency)}"
 
 
+def tr_number(value: Decimal | int | float | str) -> str:
+    """Para birimi simgesiz Türkçe sayı: 15200 → '15.200,00' (form alanları için)."""
+    return money(value, "").strip()
+
+
 def doc_no(kind: str, number: int) -> str:
     return f"{KIND_PREFIX[kind]}-{number:04d}"
 
@@ -50,7 +55,9 @@ def qty_fmt(value: Decimal) -> str:
 templates.env.filters.update(
     money=money,
     qty_fmt=qty_fmt,
+    tr_number=tr_number,
     doc_no=lambda d: doc_no(d["kind"], d["number"]),
+    doc_prefix=lambda kind: KIND_PREFIX[kind],
     tr_date=tr_date,
     status_tr=lambda s: STATUS_TR.get(s, s),
 )

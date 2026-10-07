@@ -10,7 +10,7 @@ from app.web import templates
 router = APIRouter()
 
 
-def _session_redirect(token: str, to: str = "/documents") -> RedirectResponse:
+def _session_redirect(token: str, to: str = "/dashboard") -> RedirectResponse:
     resp = RedirectResponse(to, status_code=303)
     resp.set_cookie(
         COOKIE,
@@ -83,7 +83,7 @@ def onboarding(request: Request, name: str = Form(...), user: User = Depends(cur
         )
     with user_db(user.claims) as conn:
         conn.execute("select public.create_organization(%s)", [name])
-    return RedirectResponse("/documents", status_code=303)
+    return RedirectResponse("/dashboard", status_code=303)
 
 
 @router.get("/healthz")

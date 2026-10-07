@@ -7,7 +7,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.auth import User, current_user
 from app.db import user_db
-from app.domain.totals import VAT_RATES, Item, document_totals, line_net, q2
+from app.domain.status import display_status
+from app.domain.totals import VAT_RATES, Item, document_totals, q2
+from app.queries import paid_for, totals_for
 from app.web import KIND_TR, active_org, templates
 
 router = APIRouter(prefix="/documents")
@@ -119,22 +121,13 @@ def list_documents(request: Request, user: User = Depends(current_user)):
             "order by d.created_at desc limit 100"
         ).fetchall()
         ids = [d["id"] for d in docs]
-        item_rows = (
-            conn.execute(
-                "select document_id, qty, unit_price, vat_rate from public.document_items "
-                "where document_id = any(%s)",
-                [ids],
-            ).fetchall()
-            if ids
-            else []
-        )
-    by_doc: dict = {}
-    for r in item_rows:
-        by_doc.setdefault(r["document_id"], []).append(
-            Item(qty=r["qty"], unit_price=r["unit_price"], vat_rate=r["vat_rate"])
-        )
+        totals = totals_for(conn, ids)
+        paid = paid_for(conn, ids)
     for d in docs:
-        d["totals"] = document_totals(by_doc.get(d["id"], []))
+        d["totals"] = totals[d["id"]]
+        d["display_status"] = display_status(
+            d["kind"], d["status"], d["due_date"], d["totals"].gross - paid[d["id"]]
+        )
     return templates.TemplateResponse(request, "documents.html", {"user": user, "docs": docs})
 
 
@@ -250,30 +243,3 @@ def create_document(
                 ],
             )
     return RedirectResponse(f"/documents/{doc_id}", status_code=303)
-
-
-@router.get("/{doc_id}", response_class=HTMLResponse)
-def show_document(request: Request, doc_id: UUID, user: User = Depends(current_user)):
-    with user_db(user.claims) as conn:
-        active_org(conn)
-        doc = conn.execute(
-            "select d.*, c.name as client_name, c.email as client_email, "
-            "c.address as client_address, c.tax_id as client_tax_id "
-            "from public.documents d left join public.clients c on c.id = d.client_id "
-            "where d.id = %s",
-            [doc_id],
-        ).fetchone()
-        if doc is None:
-            raise HTTPException(status_code=404)
-        items = conn.execute(
-            "select * from public.document_items where document_id = %s order by position",
-            [doc_id],
-        ).fetchall()
-    calc = [Item(qty=i["qty"], unit_price=i["unit_price"], vat_rate=i["vat_rate"]) for i in items]
-    for item, c in zip(items, calc, strict=True):
-        item["net"] = line_net(c)
-    return templates.TemplateResponse(
-        request,
-        "document_detail.html",
-        {"user": user, "doc": doc, "items": items, "totals": document_totals(calc)},
-    )

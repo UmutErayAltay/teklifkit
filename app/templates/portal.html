@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ v.no }}{% endblock %}
+{% block content %}
+<div class="row-between">
+  <h1>{{ KIND_TR[v.kind] }} {{ v.no }} <span class="badge {{ v.display_status }}">{{ v.display_status|status_tr }}</span></h1>
+  <a class="btn secondary" href="/p/{{ token }}/pdf" target="_blank" rel="noopener">PDF indir</a>
+</div>
+{% if message %}<p class="error">{{ message }}</p>{% endif %}
+<p class="muted"><strong>{{ v.org_name }}</strong> tarafından hazırlandı · {{ v.issue_date|tr_date }}
+  {% if v.due_date %}· Vade {{ v.due_date|tr_date }}{% endif %}</p>
+
+{% if v.client %}
+<section class="card"><span class="muted">Sayın</span> <strong>{{ v.client.name }}</strong></section>
+{% endif %}
+
+<table class="list">
+  <thead><tr><th>Açıklama</th><th class="right">Adet</th><th class="right">Birim fiyat</th><th class="right">KDV</th><th class="right">Net</th></tr></thead>
+  <tbody>
+    {% for i in v.items %}
+    <tr>
+      <td>{{ i.description }}</td>
+      <td class="right">{{ i.qty|qty_fmt }}</td>
+      <td class="right">{{ i.unit_price|money(v.currency) }}</td>
+      <td class="right">%{{ i.vat_rate }}</td>
+      <td class="right">{{ i.net|money(v.currency) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% with totals = v.totals, currency = v.currency %}{% include "_totals.html" %}{% endwith %}
+{% if v.notes %}<p class="muted">{{ v.notes }}</p>{% endif %}
+
+{% if v.kind == "invoice" %}
+<section class="card">
+  <table class="totals">
+    <tr><th>Ödenen</th><td>{{ v.paid|money(v.currency) }}</td></tr>
+    <tr class="grand"><th>Ödenecek</th><td>{{ v.balance|money(v.currency) }}</td></tr>
+  </table>
+</section>
+{% elif v.status == "sent" %}
+<section class="card actions">
+  <form method="post" action="/p/{{ token }}/respond">
+    <input type="hidden" name="decision" value="accepted">
+    <button type="submit">Teklifi kabul et</button>
+  </form>
+  <form method="post" action="/p/{{ token }}/respond">
+    <input type="hidden" name="decision" value="rejected">
+    <button type="submit" class="secondary">Reddet</button>
+  </form>
+</section>
+{% elif v.status == "accepted" %}
+<p class="ok-note">Bu teklifi kabul ettiniz. Teşekkürler.</p>
+{% elif v.status == "rejected" %}
+<p class="muted">Bu teklif reddedildi.</p>
+{% endif %}
+{% endblock %}

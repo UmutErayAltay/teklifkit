@@ -60,7 +60,50 @@ def exposed_functions(conn: psycopg.Connection) -> list[str]:
     return findings
 
 
-ALL_CHECKS = (tables_without_rls, always_true_policies, anon_table_privileges, exposed_functions)
+# authenticated'ın çağırabileceği public fonksiyonların tam listesi (açık allowlist).
+AUTHENTICATED_FUNCTIONS = {"is_member", "create_organization", "next_document_number"}
+
+
+def function_scope(conn: psycopg.Connection) -> list[str]:
+    """authenticated yalnız allowlist'tekileri, portal rolü yalnız portal_* fonksiyonlarını
+    çağırabilir. Yeni bir fonksiyon eklenip yanlışlıkla açılırsa burada kırmızı olur."""
+    rows = conn.execute(
+        "select p.proname, has_function_privilege('authenticated', p.oid, 'execute'), "
+        "has_function_privilege('portal', p.oid, 'execute') "
+        "from pg_proc p join pg_namespace n on n.oid = p.pronamespace "
+        "where n.nspname = 'public'"
+    )
+    findings = []
+    for name, auth_exec, portal_exec in rows:
+        if auth_exec and name not in AUTHENTICATED_FUNCTIONS:
+            findings.append(f"public.{name}(): authenticated EXECUTE var ama allowlist'te değil")
+        if portal_exec and not name.startswith("portal_"):
+            findings.append(f"public.{name}(): portal rolü portal_* dışı fonksiyon çağırabiliyor")
+        if name.startswith("portal_") and auth_exec:
+            findings.append(f"public.{name}(): portal fonksiyonu authenticated'a açık")
+    return findings
+
+
+def portal_table_privileges(conn: psycopg.Connection) -> list[str]:
+    """portal rolünün public'teki hiçbir tabloda/görünümde yetkisi olmamalı."""
+    rows = conn.execute(
+        "select c.relname, p.priv from pg_class c "
+        "join pg_namespace n on n.oid = c.relnamespace "
+        "cross join (values ('select'), ('insert'), ('update'), ('delete')) as p(priv) "
+        "where n.nspname = 'public' and c.relkind in ('r', 'p', 'v') "
+        "and has_table_privilege('portal', c.oid, p.priv)"
+    )
+    return [f"public.{r[0]}: portal {r[1]} yetkisi var" for r in rows]
+
+
+ALL_CHECKS = (
+    tables_without_rls,
+    always_true_policies,
+    anon_table_privileges,
+    exposed_functions,
+    function_scope,
+    portal_table_privileges,
+)
 
 
 def run_all(conn: psycopg.Connection) -> list[str]:

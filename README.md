@@ -3,9 +3,17 @@
 Freelancer'lar için teklif → fatura uygulaması. **FastAPI + Jinja2/HTMX + Supabase Postgres**,
 tenant izolasyonu **Row Level Security** ile veritabanı katmanında sağlanır.
 
-> Durum: M1 (iskelet + güvenli çekirdek). Müşteri yönetimi, teklif/fatura oluşturma, canlı
-> toplamlar, RLS izolasyon ve şema denetim testleri hazır. Durum makinesi, faturaya dönüştürme,
-> PDF, müşteri portalı ve canlı yayın sıradaki aşamalarda.
+> Durum: M2 (iş akışı). Müşteri yönetimi, teklif/fatura, canlı toplamlar, durum makinesi,
+> teklif → fatura dönüşümü, kısmi ödemeler, PDF, müşteri portalı ve özet paneli hazır.
+> Canlı yayın (Supabase + Render) sıradaki aşamada.
+
+## Akış
+
+`taslak → gönderildi → kabul/red` (teklif) · `taslak → gönderildi ⇄ ödendi` (fatura). Kabul edilen
+teklif tek tıkla faturaya dönüşür (kalemler kopyalanır, bir teklif en fazla bir faturaya). Fatura
+ödemeleri kısmi olabilir; bakiye sıfırlanınca fatura kendiliğinden `ödendi` olur, ödeme silinirse
+yeniden açılır. "Vadesi geçti" saklanmaz, hesaplanır. Gönderilen belge müşteriye 30 gün geçerli,
+iptal edilebilir bir bağlantıyla açılır; müşteri giriş yapmadan teklifi görür, PDF indirir, kabul/red eder.
 
 ## Güvenlik tasarımı (özet)
 
@@ -21,6 +29,20 @@ tenant izolasyonu **Row Level Security** ile veritabanı katmanında sağlanır.
 * **Şema denetimi testi** (`tests/db/audit.py`): RLS'siz tablo, `USING(true)` politikası, anon
   yetkisi, `PUBLIC`'e açık veya `search_path`'siz `SECURITY DEFINER` fonksiyon CI'ı kırar. Denetimin
   kendisi de bilerek bozulmuş şemalarla test edilir.
+* **Kurallar veritabanında da**: `documents_guard` geçersiz durum geçişini, kimlik sütunlarının
+  (org, tür, numara) değişmesini ve gönderilmiş belgenin müşteri/para birimi/tarihinin değişmesini
+  reddeder; gönderilmiş belgenin kalemleri değiştirilemez; ödeme yalnız gönderilmiş faturaya eklenir.
+  Bir hata ya da doğrudan SQL bile gönderilmiş faturayı bozamaz.
+* **Müşteri portalı ayrı bir rolle çalışır** (`portal`): hiçbir tabloda yetkisi yok, yalnız iki
+  `SECURITY DEFINER` fonksiyonu (`portal_document`, `portal_respond`) çağırabilir. Portal koduna bir SQL
+  hatası sızsa bile başka kiracının verisi okunamaz. Bağlantı token'ı 256 bit rastgele; veritabanında
+  yalnız SHA-256 özeti tutulur ve token yalnızca oluşturulduğu anda görünür. Geçersiz / süresi dolmuş /
+  iptal edilmiş / taslak ayırt edilmeden aynı 404'ü verir; portal yanıtları `no-store`, `no-referrer`,
+  `noindex` başlıklarıyla gelir.
+* **Şema denetimi** bunlara da bakar: `authenticated` yalnız açık bir fonksiyon allowlist'ini
+  çağırabilir, `portal` yalnız `portal_*` fonksiyonlarını ve hiçbir tabloyu.
+* **Yarış durumları**: ödeme ve dönüştürme belge satırı `FOR UPDATE` ile kilitlenir (paralel testler
+  kilit kaldırılınca kırılır); fazla ödeme ve çift fatura mümkün değil.
 * Oturum: Supabase JWT'si httpOnly + SameSite=Lax çerezde; imza JWKS (veya HS256 secret) ile
   doğrulanır. Cross-site yazma istekleri (`Sec-Fetch-Site`) reddedilir.
 * Para: `numeric` + `Decimal`; KDV oran grubu başına bir kez yuvarlanır (`app/domain/totals.py`).
@@ -28,6 +50,7 @@ tenant izolasyonu **Row Level Security** ile veritabanı katmanında sağlanır.
 ## Yerelde çalıştırma
 
 ```bash
+# PDF (WeasyPrint) için: libpango-1.0-0 libpangoft2-1.0-0 fonts-dejavu-core (apt)
 pip install -r requirements-dev.txt
 docker run -d --name tk-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16
 export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres

@@ -9,43 +9,9 @@ from fastapi.testclient import TestClient
 
 from app.auth import COOKIE
 from app.main import app
-from tests.conftest import JWT_SECRET
+from tests.web.helpers import DOC_FORM, onboard, token_for
 
 pytestmark = pytest.mark.usefixtures("db_env")
-
-
-def token_for(claims: dict, **overrides) -> str:
-    payload = {**claims, "exp": int(time.time()) + 600, **overrides}
-    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-
-
-@pytest.fixture
-def client_for(make_user):
-    """Her çağrı yeni bir kullanıcı + kendi çerezli TestClient döndürür."""
-
-    def _make(label="u") -> TestClient:
-        claims = make_user(label)
-        c = TestClient(app, follow_redirects=False)
-        c.cookies.set(COOKIE, token_for(claims))
-        c.claims = claims
-        return c
-
-    return _make
-
-
-DOC_FORM = {
-    "kind": "quote",
-    "currency": "TRY",
-    "description": ["Web tasarım", "Barındırma"],
-    "qty": ["1", "12"],
-    "unit_price": ["10.000,00", "50"],
-    "vat_rate": ["20", "20"],
-}
-
-
-def onboard(c: TestClient, name="Atölye"):
-    r = c.post("/onboarding", data={"name": name})
-    assert r.status_code == 303 and r.headers["location"] == "/documents"
 
 
 def test_anonymous_is_redirected_to_login():

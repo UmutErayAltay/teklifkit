@@ -18,7 +18,7 @@
       <td>{{ KIND_TR[d.kind] }}</td>
       <td>{{ d.client_name or "—" }}</td>
       <td>{{ d.issue_date|tr_date }}</td>
-      <td><span class="badge {{ d.status }}">{{ d.status|status_tr }}</span></td>
+      <td><span class="badge {{ d.display_status }}">{{ d.display_status|status_tr }}</span></td>
       <td class="right">{{ d.totals.gross|money(d.currency) }}</td>
     </tr>
     {% endfor %}

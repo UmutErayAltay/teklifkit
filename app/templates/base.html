@@ -10,9 +10,10 @@
 </head>
 <body>
   <header class="top">
-    <a class="brand" href="/">teklifkit</a>
+    {% if user %}<a class="brand" href="/">teklifkit</a>{% else %}<span class="brand">teklifkit</span>{% endif %}
     {% if user %}
     <nav>
+      <a href="/dashboard">Özet</a>
       <a href="/documents">Teklif &amp; Faturalar</a>
       <a href="/clients">Müşteriler</a>
     </nav>

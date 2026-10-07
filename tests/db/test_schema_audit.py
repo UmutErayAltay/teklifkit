@@ -46,3 +46,30 @@ def test_detects_exposed_security_definer(conn):
     findings = audit.exposed_functions(conn)
     assert "public.audit_probe_fn(): PUBLIC EXECUTE açık" in findings
     assert "public.audit_probe_fn(): SECURITY DEFINER ama search_path sabit değil" in findings
+
+
+def test_detects_function_outside_allowlist_granted_to_authenticated(conn):
+    conn.execute(
+        "create function public.audit_probe_fn() returns int language sql "
+        "set search_path = '' as 'select 1'"
+    )
+    conn.execute("revoke all on function public.audit_probe_fn() from public, anon")
+    assert audit.function_scope(conn) == []  # authenticated'a verilmediyse temiz
+    conn.execute("grant execute on function public.audit_probe_fn() to authenticated")
+    assert any("audit_probe_fn" in f and "allowlist" in f for f in audit.function_scope(conn))
+
+
+def test_detects_portal_role_calling_non_portal_function(conn):
+    conn.execute(
+        "create function public.audit_probe_fn() returns int language sql "
+        "set search_path = '' as 'select 1'"
+    )
+    conn.execute("revoke all on function public.audit_probe_fn() from public, anon")
+    conn.execute("grant execute on function public.audit_probe_fn() to portal")
+    assert any("audit_probe_fn" in f and "portal" in f for f in audit.function_scope(conn))
+
+
+def test_detects_portal_table_privilege(conn):
+    conn.execute("create table public.audit_probe (id int)")
+    conn.execute("grant select on public.audit_probe to portal")
+    assert "public.audit_probe: portal select yetkisi var" in audit.portal_table_privileges(conn)

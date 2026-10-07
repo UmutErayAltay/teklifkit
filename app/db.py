@@ -26,3 +26,11 @@ def user_db(claims: dict | None) -> Iterator[psycopg.Connection]:
         )
         conn.execute("set local role " + ("authenticated" if claims else "anon"))
         yield conn
+
+
+@contextmanager
+def portal_db() -> Iterator[psycopg.Connection]:
+    """Müşteri portalı: tablo yetkisi olmayan `portal` rolü, yalnız portal_*() fonksiyonları."""
+    with psycopg.connect(get_settings().database_url, row_factory=dict_row) as conn:
+        conn.execute("set local role portal")
+        yield conn

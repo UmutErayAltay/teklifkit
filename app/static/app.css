@@ -61,3 +61,17 @@ td.right, th.right { text-align: right; }
   .items tr { display: block; padding: 8px 0; border-bottom: 1px solid var(--border); }
   .items td { display: block; border: 0; padding: 4px 10px; }
 }
+
+h2 { font-size: 1.1rem; margin: 24px 0 8px; }
+.small { font-size: .8rem; }
+.inline { display: inline; margin: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+.actions form { margin: 0; }
+.portal { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; flex-basis: 100%; }
+.portal-link { flex-basis: 100%; margin-top: 8px; }
+#portal-box { flex-basis: 100%; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.stat { margin: 0; }
+.stat .big { font-size: 1.3rem; font-weight: 700; }
+.stat.danger .big { color: var(--danger); }
+.ok-note { color: var(--ok); }

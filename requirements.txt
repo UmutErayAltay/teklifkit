@@ -5,3 +5,4 @@ psycopg[binary]~=3.2
 pyjwt[crypto]~=2.10
 python-multipart~=0.0.20
 httpx~=0.28
+weasyprint~=70.0

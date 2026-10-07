@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Özet{% endblock %}
+{% macro stat(title, bucket, hint, tone="") %}
+<section class="card stat {{ tone }}">
+  <div class="muted">{{ title }}</div>
+  {% if bucket.count %}
+    {% for cur, amount in bucket.amounts.items() %}<div class="big">{{ amount|money(cur) }}</div>{% endfor %}
+    <div class="muted">{{ bucket.count }} belge</div>
+  {% else %}
+    <div class="big muted">—</div>
+  {% endif %}
+  <div class="muted small">{{ hint }}</div>
+</section>
+{% endmacro %}
+{% block content %}
+<div class="row-between">
+  <h1>Özet</h1>
+  <div>
+    <a class="btn" href="/documents/new?kind=quote">+ Teklif</a>
+    <a class="btn secondary" href="/documents/new?kind=invoice">+ Fatura</a>
+  </div>
+</div>
+<div class="stats">
+  {{ stat("Açık teklifler", open_quotes, "Gönderildi, yanıt bekliyor") }}
+  {{ stat("Faturalanacak", to_invoice, "Kabul edildi, henüz faturası yok") }}
+  {{ stat("Tahsil edilecek", receivable, "Gönderilmiş faturaların kalan bakiyesi") }}
+  {{ stat("Vadesi geçmiş", overdue, "Vadesi geçen ve bakiyesi olan faturalar", "danger") }}
+</div>
+{% if overdue_rows %}
+<h2>Vadesi geçenler</h2>
+<table class="list">
+  <thead><tr><th>No</th><th>Müşteri</th><th>Vade</th><th class="right">Kalan</th></tr></thead>
+  <tbody>
+    {% for r in overdue_rows %}
+    <tr>
+      <td><a href="/documents/{{ r.id }}">{{ r.no }}</a></td>
+      <td>{{ r.client_name or "—" }}</td>
+      <td>{{ r.due_date|tr_date }}</td>
+      <td class="right">{{ r.balance|money(r.currency) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}
