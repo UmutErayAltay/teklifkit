@@ -351,3 +351,14 @@ def test_other_tenant_cannot_touch_workflow_endpoints(client_for):
 
     assert "kabul edildi" in page(a, f"/documents/{quote}")
     assert "Henüz ödeme yok" not in page(a, f"/documents/{invoice}")
+
+
+def test_portal_link_uses_public_base_url_when_configured(owner, monkeypatch):
+    doc = create_doc(owner)
+    set_status(owner, doc, "sent")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://teklifkit.example/")
+    r = owner.post(
+        f"/documents/{doc}/portal-link", headers={"HX-Request": "true", "Host": "evil.test"}
+    )
+    assert 'value="https://teklifkit.example/p/' in r.text
+    assert "evil.test" not in r.text

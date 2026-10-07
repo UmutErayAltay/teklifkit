@@ -29,6 +29,7 @@
   {% endif %}
 </section>
 
+{% if not read_only() %}
 <section class="card actions">
   {% for to, label in actions %}
   <form method="post" action="/documents/{{ v.id }}/status">
@@ -59,6 +60,7 @@
   {% endif %}
   {% if not actions and v.status == "draft" %}<span class="muted">—</span>{% endif %}
 </section>
+{% endif %}
 
 <table class="list">
   <thead><tr><th>Açıklama</th><th class="right">Adet</th><th class="right">Birim fiyat</th><th class="right">KDV</th><th class="right">Net</th></tr></thead>
@@ -89,10 +91,12 @@
         <td>{{ p.paid_on|tr_date }}</td><td>{{ p.method or "—" }}</td><td>{{ p.note or "—" }}</td>
         <td class="right">{{ p.amount|money(v.currency) }}</td>
         <td class="right">
+          {% if not read_only() %}
           <form method="post" action="/documents/{{ v.id }}/payments/{{ p.id }}/delete" class="inline"
                 onsubmit="return confirm('Ödeme kaydı silinsin mi?')">
             <button type="submit" class="link danger">Sil</button>
           </form>
+          {% endif %}
         </td>
       </tr>
       {% endfor %}
@@ -103,7 +107,7 @@
     <tr><th>Ödenen</th><td>{{ v.paid|money(v.currency) }}</td></tr>
     <tr class="grand"><th>Kalan</th><td>{{ v.balance|money(v.currency) }}</td></tr>
   </table>
-  {% if v.status == "sent" %}
+  {% if v.status == "sent" and not read_only() %}
   <form method="post" action="/documents/{{ v.id }}/payments" class="grid4">
     <label>Tutar <input name="amount" inputmode="decimal" required value="{{ v.balance|tr_number }}"></label>
     <label>Tarih <input type="date" name="paid_on" value="{{ today.isoformat() }}"></label>

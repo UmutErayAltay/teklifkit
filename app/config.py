@@ -11,6 +11,9 @@ class Settings:
     supabase_anon_key: str | None
     dev_login: bool
     cookie_secure: bool
+    public_base_url: str | None  # portal bağlantıları için; yoksa istekteki Host kullanılır
+    demo_email: str | None  # salt-okunur demo hesabı (isteğe bağlı)
+    demo_password: str | None
 
 
 def get_settings() -> Settings:
@@ -25,4 +28,7 @@ def get_settings() -> Settings:
         supabase_anon_key=env.get("SUPABASE_ANON_KEY") or None,
         dev_login=dev_login,
         cookie_secure=env.get("COOKIE_SECURE", "0" if dev_login else "1") == "1",
+        public_base_url=(env.get("PUBLIC_BASE_URL") or "").rstrip("/") or None,
+        demo_email=env.get("DEMO_EMAIL") or None,
+        demo_password=env.get("DEMO_PASSWORD") or None,
     )

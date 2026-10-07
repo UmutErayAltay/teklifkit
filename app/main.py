@@ -1,3 +1,4 @@
+import psycopg
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -41,6 +42,13 @@ async def login_required_handler(request: Request, _: LoginRequired):
 @app.exception_handler(NoOrg)
 async def no_org_handler(request: Request, _: NoOrg):
     return _redirect(request, "/onboarding")
+
+
+@app.exception_handler(psycopg.errors.InsufficientPrivilege)
+async def rls_denied_handler(request: Request, _: psycopg.errors.InsufficientPrivilege):
+    """RLS/yetki reddi (ör. salt-okunur hesapla yazma denemesi) 500 değil 403."""
+    message = "Bu işlem için yetkin yok (hesabın salt okunur olabilir)."
+    return Response(message, status_code=403, media_type="text/plain; charset=utf-8")
 
 
 @app.get("/", include_in_schema=False)

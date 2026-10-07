@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse
 
 from app.auth import User, current_user
 from app.db import user_db
-from app.web import active_org, templates
+from app.web import active_org, require_write, templates
 
 router = APIRouter(prefix="/clients")
 
@@ -45,6 +45,8 @@ def create_client(
 def delete_client(client_id: UUID, user: User = Depends(current_user)):
     try:
         with user_db(user.claims) as conn:
+            active_org(conn)
+            require_write()
             deleted = conn.execute("delete from public.clients where id = %s", [client_id]).rowcount
     except psycopg.errors.ForeignKeyViolation:
         raise HTTPException(

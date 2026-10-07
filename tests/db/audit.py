@@ -61,7 +61,7 @@ def exposed_functions(conn: psycopg.Connection) -> list[str]:
 
 
 # authenticated'ın çağırabileceği public fonksiyonların tam listesi (açık allowlist).
-AUTHENTICATED_FUNCTIONS = {"is_member", "create_organization", "next_document_number"}
+AUTHENTICATED_FUNCTIONS = {"is_member", "can_write", "create_organization", "next_document_number"}
 
 
 def function_scope(conn: psycopg.Connection) -> list[str]:
@@ -96,6 +96,21 @@ def portal_table_privileges(conn: psycopg.Connection) -> list[str]:
     return [f"public.{r[0]}: portal {r[1]} yetkisi var" for r in rows]
 
 
+def write_policies_not_gated_by_can_write(conn: psycopg.Connection) -> list[str]:
+    """INSERT/UPDATE/DELETE/ALL politikaları can_write() kullanmalı; yalnız is_member() olan bir
+    yazma politikası salt-okunur (viewer) rolüne yazma izni verir."""
+    rows = conn.execute(
+        "select tablename, policyname, cmd, coalesce(qual, ''), coalesce(with_check, '') "
+        "from pg_policies where schemaname = 'public' and cmd in ('INSERT','UPDATE','DELETE','ALL')"
+    )
+    findings = []
+    for table, policy, cmd, qual, check in rows:
+        expr = qual + " " + check
+        if "can_write(" not in expr:
+            findings.append(f"public.{table}.{policy}: {cmd} politikası can_write() kullanmıyor")
+    return findings
+
+
 ALL_CHECKS = (
     tables_without_rls,
     always_true_policies,
@@ -103,6 +118,7 @@ ALL_CHECKS = (
     exposed_functions,
     function_scope,
     portal_table_privileges,
+    write_policies_not_gated_by_can_write,
 )
 
 

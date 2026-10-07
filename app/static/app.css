@@ -75,3 +75,5 @@ h2 { font-size: 1.1rem; margin: 24px 0 8px; }
 .stat .big { font-size: 1.3rem; font-weight: 700; }
 .stat.danger .big { color: var(--danger); }
 .ok-note { color: var(--ok); }
+.readonly-banner { background: var(--surface); border: 1px dashed var(--border); border-radius: 6px;
+  padding: 8px 12px; color: var(--muted); font-size: .85rem; }

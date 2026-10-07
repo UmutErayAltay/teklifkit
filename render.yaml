@@ -1,0 +1,30 @@
+# Render Blueprint. Gizli değerler (sync: false) panelden girilir, repoda tutulmaz.
+# ÖNEMLİ: web servisi ile Supabase projesi AYNI bölgede olmalı (örn. ikisi de Frankfurt).
+# Bölgeler arası her sorgu turu ~yüzlerce ms ekler ve sayfa başına birkaç sorgu çalışır.
+services:
+  - type: web
+    name: teklifkit
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL # Supabase direct/session bağlantısı (migrasyon DDL'i için)
+        sync: false
+      - key: JWKS_URL # https://<proje>.supabase.co/auth/v1/.well-known/jwks.json
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: PUBLIC_BASE_URL # https://<servis>.onrender.com (portal bağlantıları için)
+        sync: false
+      - key: DEMO_EMAIL # isteğe bağlı: salt-okunur demo hesabı
+        sync: false
+      - key: DEMO_PASSWORD
+        sync: false
+      - key: RUN_MIGRATIONS
+        value: "1"
+      - key: COOKIE_SECURE
+        value: "1"

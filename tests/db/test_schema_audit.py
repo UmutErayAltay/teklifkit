@@ -73,3 +73,13 @@ def test_detects_portal_table_privilege(conn):
     conn.execute("create table public.audit_probe (id int)")
     conn.execute("grant select on public.audit_probe to portal")
     assert "public.audit_probe: portal select yetkisi var" in audit.portal_table_privileges(conn)
+
+
+def test_detects_write_policy_that_ignores_viewer_role(conn):
+    conn.execute("create table public.audit_probe (org_id uuid)")
+    conn.execute("alter table public.audit_probe enable row level security")
+    conn.execute(
+        "create policy sloppy on public.audit_probe for insert to authenticated "
+        "with check (public.is_member(org_id))"
+    )
+    assert any("audit_probe.sloppy" in f for f in audit.write_policies_not_gated_by_can_write(conn))

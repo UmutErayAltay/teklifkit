@@ -3,10 +3,12 @@
 {% block content %}
 <div class="row-between">
   <h1>Teklif &amp; Faturalar</h1>
+  {% if not read_only() %}
   <div>
     <a class="btn" href="/documents/new?kind=quote">+ Teklif</a>
     <a class="btn secondary" href="/documents/new?kind=invoice">+ Fatura</a>
   </div>
+  {% endif %}
 </div>
 {% if docs %}
 <table class="list">

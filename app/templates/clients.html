@@ -2,6 +2,7 @@
 {% block title %}Müşteriler{% endblock %}
 {% block content %}
 <h1>Müşteriler</h1>
+{% if not read_only() %}
 <section class="card">
   <form class="grid4" hx-post="/clients" hx-target="#client-list" hx-swap="beforeend"
         hx-on::after-request="if (event.detail.successful) this.reset()">
@@ -12,6 +13,7 @@
     <button type="submit">Müşteri ekle</button>
   </form>
 </section>
+{% endif %}
 <table class="list">
   <thead><tr><th>Ad</th><th>E-posta</th><th>Vergi no</th><th></th></tr></thead>
   <tbody id="client-list">

@@ -40,7 +40,7 @@ def apply_migrations(conn: psycopg.Connection, *, stub: bool = False) -> list[st
 
 
 def main(argv: list[str]) -> int:
-    with psycopg.connect(get_settings().database_url) as conn:
+    with psycopg.connect(get_settings().database_url, prepare_threshold=None) as conn:
         applied = apply_migrations(conn, stub="--stub" in argv)
     print("uygulandı:", ", ".join(applied) if applied else "(yeni migrasyon yok)")
     return 0

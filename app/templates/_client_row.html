@@ -3,7 +3,9 @@
   <td>{{ c.email or "—" }}</td>
   <td>{{ c.tax_id or "—" }}</td>
   <td class="right">
+    {% if not read_only() %}
     <button class="link danger" hx-delete="/clients/{{ c.id }}" hx-target="closest tr" hx-swap="outerHTML"
             hx-confirm="{{ c.name }} silinsin mi?">Sil</button>
+    {% endif %}
   </td>
 </tr>

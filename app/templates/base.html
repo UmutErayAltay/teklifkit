@@ -24,6 +24,9 @@
     {% endif %}
   </header>
   <main>
+    {% if read_only() %}
+    <p class="readonly-banner">Salt okunur demo hesabı: verileri görebilir, değiştiremezsin.</p>
+    {% endif %}
     <div id="flash" class="flash" role="alert" hidden></div>
     {% block content %}{% endblock %}
   </main>

@@ -1,10 +1,12 @@
 """Ortak web yardımcıları: şablon motoru, filtreler, aktif org çözümü."""
 
+from contextvars import ContextVar
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
 import psycopg
+from fastapi import HTTPException
 from fastapi.templating import Jinja2Templates
 
 BASE = Path(__file__).resolve().parent
@@ -64,13 +66,29 @@ templates.env.filters.update(
 templates.env.globals.update(KIND_TR=KIND_TR, VAT_RATES=(0, 1, 10, 20))
 
 
+# Yalnızca arayüzde yazma düğmelerini gizlemek için. Güvenlik garantisi DB'deki can_write()
+# politikalarıdır; bu değer yanlış olsa bile viewer yazamaz. Her istek kendi bağlam kopyasında
+# çalıştığı için değerler istekler arasında sızmaz.
+_read_only: ContextVar[bool] = ContextVar("read_only", default=False)
+templates.env.globals["read_only"] = _read_only.get
+
+
+def require_write() -> None:
+    """Salt-okunur hesaplara yazma uçlarında net 403.
+
+    RLS, UPDATE/DELETE'i sessizce 0 satıra düşürür; kullanıcı "başarılı" ya da "bulunamadı"
+    görmesin, gerçek sebebi okusun diye.
+    """
+    if _read_only.get():
+        raise HTTPException(status_code=403, detail="Bu işlem için yetkin yok (salt okunur hesap).")
+
+
 def active_org(conn: psycopg.Connection) -> str:
-    """Kullanıcının (RLS'in gösterdiği) ilk organizasyonu; M1'de tek aktif org."""
+    """Kullanıcının (RLS'in gösterdiği) ilk organizasyonu; tek aktif org. Rolünü de not eder."""
     row = conn.execute(
-        "select m.org_id, o.name from public.memberships m "
-        "join public.organizations o on o.id = m.org_id "
-        "order by m.created_at limit 1"
+        "select m.org_id, m.role from public.memberships m order by m.created_at limit 1"
     ).fetchone()
     if row is None:
         raise NoOrg
+    _read_only.set(row["role"] == "viewer")
     return str(row["org_id"])

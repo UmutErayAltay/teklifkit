@@ -10,6 +10,14 @@ from app.web import templates
 router = APIRouter()
 
 
+def _login_ctx() -> dict:
+    s = get_settings()
+    return {
+        "dev_login": s.dev_login,
+        "demo": bool(s.demo_email and (s.demo_password or s.dev_login)),
+    }
+
+
 def _session_redirect(token: str, to: str = "/dashboard") -> RedirectResponse:
     resp = RedirectResponse(to, status_code=303)
     resp.set_cookie(
@@ -26,9 +34,7 @@ def _session_redirect(token: str, to: str = "/dashboard") -> RedirectResponse:
 
 @router.get("/login", response_class=HTMLResponse)
 def login_form(request: Request):
-    return templates.TemplateResponse(
-        request, "login.html", {"dev_login": get_settings().dev_login, "error": None}
-    )
+    return templates.TemplateResponse(request, "login.html", {**_login_ctx(), "error": None})
 
 
 @router.post("/login", response_class=HTMLResponse)
@@ -39,7 +45,7 @@ def login(request: Request, email: str = Form(...), password: str = Form(...)):
         return templates.TemplateResponse(
             request,
             "login.html",
-            {"dev_login": get_settings().dev_login, "error": str(exc)},
+            {**_login_ctx(), "error": str(exc)},
             status_code=401,
         )
     return _session_redirect(token)
@@ -52,11 +58,8 @@ def logout():
     return resp
 
 
-@router.get("/dev-login")
-def dev_login(email: str = "dev@example.com"):
-    """Yerel geliştirme: auth.users'a kullanıcıyı ekleyip imzalı oturum açar. Üretimde 404."""
-    if not get_settings().dev_login:
-        raise HTTPException(status_code=404)
+def _dev_session(email: str) -> RedirectResponse:
+    """auth.users'a kullanıcıyı ekleyip (auth taklidi) imzalı oturum açar. Yalnız yerel."""
     with psycopg.connect(get_settings().database_url) as conn:
         row = conn.execute(
             "insert into auth.users (email) values (%s) "
@@ -64,6 +67,30 @@ def dev_login(email: str = "dev@example.com"):
             [email],
         ).fetchone()
     return _session_redirect(mint_dev_token(str(row[0]), email))
+
+
+@router.get("/dev-login")
+def dev_login(email: str = "dev@example.com"):
+    """Yerel geliştirme: Supabase olmadan oturum. DEV_LOGIN kapalıyken (üretim) 404."""
+    if not get_settings().dev_login:
+        raise HTTPException(status_code=404)
+    return _dev_session(email)
+
+
+@router.post("/demo-login")
+def demo_login():
+    """Salt-okunur demo hesabıyla tek tıkla giriş. Parola sunucuda kalır (DEMO_PASSWORD)."""
+    s = get_settings()
+    if not s.demo_email:
+        raise HTTPException(status_code=404)
+    if s.dev_login:
+        return _dev_session(s.demo_email)
+    if not s.demo_password:
+        raise HTTPException(status_code=404)
+    try:
+        return _session_redirect(password_login(s.demo_email, s.demo_password))
+    except AuthError:
+        raise HTTPException(status_code=503, detail="Demo hesabı şu an kullanılamıyor.") from None
 
 
 @router.get("/onboarding", response_class=HTMLResponse)

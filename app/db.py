@@ -16,10 +16,21 @@ from psycopg.rows import dict_row
 from app.config import get_settings
 
 
+def _connect() -> psycopg.Connection:
+    # prepare_threshold=None: Supabase'in transaction-mode pooler'ı (pgbouncer) sunucu tarafı
+    # prepared statement'ları taşıyamaz; psycopg'un otomatik prepare'i kapatılmalı.
+    return psycopg.connect(
+        get_settings().database_url,
+        row_factory=dict_row,
+        prepare_threshold=None,
+        connect_timeout=5,
+    )
+
+
 @contextmanager
 def user_db(claims: dict | None) -> Iterator[psycopg.Connection]:
     """Tek transaction: çıkışta commit, hatada rollback. claims=None → anonim rol."""
-    with psycopg.connect(get_settings().database_url, row_factory=dict_row) as conn:
+    with _connect() as conn:
         # set_config(..., is_local=true) ve SET LOCAL transaction ile sınırlıdır.
         conn.execute(
             "select set_config('request.jwt.claims', %s, true)", [json.dumps(claims or {})]
@@ -31,6 +42,6 @@ def user_db(claims: dict | None) -> Iterator[psycopg.Connection]:
 @contextmanager
 def portal_db() -> Iterator[psycopg.Connection]:
     """Müşteri portalı: tablo yetkisi olmayan `portal` rolü, yalnız portal_*() fonksiyonları."""
-    with psycopg.connect(get_settings().database_url, row_factory=dict_row) as conn:
+    with _connect() as conn:
         conn.execute("set local role portal")
         yield conn

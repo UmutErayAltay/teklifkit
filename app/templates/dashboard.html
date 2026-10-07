@@ -15,10 +15,12 @@
 {% block content %}
 <div class="row-between">
   <h1>Özet</h1>
+  {% if not read_only() %}
   <div>
     <a class="btn" href="/documents/new?kind=quote">+ Teklif</a>
     <a class="btn secondary" href="/documents/new?kind=invoice">+ Fatura</a>
   </div>
+  {% endif %}
 </div>
 <div class="stats">
   {{ stat("Açık teklifler", open_quotes, "Gönderildi, yanıt bekliyor") }}

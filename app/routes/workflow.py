@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.auth import User, current_user
+from app.config import get_settings
 from app.db import user_db
 from app.domain.status import can_transition, manual_actions
 from app.domain.totals import q2
@@ -18,7 +19,7 @@ from app.pdf import render_pdf
 from app.queries import load_document, related
 from app.routes.documents import parse_decimal
 from app.views import DocView
-from app.web import KIND_TR, active_org, money, templates
+from app.web import KIND_TR, active_org, money, require_write, templates
 
 router = APIRouter(prefix="/documents")
 
@@ -46,8 +47,13 @@ def render_detail(
     return templates.TemplateResponse(request, "document_detail.html", ctx, status_code=status_code)
 
 
-def _load_or_404(conn: psycopg.Connection, doc_id: UUID, *, lock: bool = False) -> DocView:
+def _load_or_404(
+    conn: psycopg.Connection, doc_id: UUID, *, write: bool = False, lock: bool = False
+) -> DocView:
+    """write=True: yazma ucu (salt-okunur hesaba 403). lock=True: belge satırını kilitler."""
     active_org(conn)
+    if write:
+        require_write()
     view = load_document(conn, doc_id, lock=lock)
     if view is None:
         raise HTTPException(status_code=404)
@@ -70,7 +76,7 @@ def change_status(
     request: Request, doc_id: UUID, to: str = Form(...), user: User = Depends(current_user)
 ):
     with user_db(user.claims) as conn:
-        view = _load_or_404(conn, doc_id, lock=True)
+        view = _load_or_404(conn, doc_id, write=True, lock=True)
         allowed = {t for t, _ in manual_actions(view.kind, view.status)}
         if to not in allowed or not can_transition(view.kind, view.status, to):
             return render_detail(
@@ -84,7 +90,9 @@ def change_status(
 def convert_to_invoice(request: Request, doc_id: UUID, user: User = Depends(current_user)):
     """Kabul edilmiş teklifi taslak faturaya dönüştürür (kalemler kopyalanır). İdempotent."""
     with user_db(user.claims) as conn:
-        quote = _load_or_404(conn, doc_id, lock=True)  # kilit: çift tıklama yarışını serileştirir
+        quote = _load_or_404(
+            conn, doc_id, write=True, lock=True
+        )  # kilit: çift tıklama yarışını serileştirir
         existing = related(conn, quote)["converted_to"]
         if existing:
             return _redirect_to(existing["id"])
@@ -129,7 +137,9 @@ def add_payment(
     user: User = Depends(current_user),
 ):
     with user_db(user.claims) as conn:
-        view = _load_or_404(conn, doc_id, lock=True)  # kilit: eşzamanlı ödemeler fazla ödeyemez
+        view = _load_or_404(
+            conn, doc_id, write=True, lock=True
+        )  # kilit: eşzamanlı ödemeler fazla ödeyemez
 
         def fail(message: str, code: int = 422) -> HTMLResponse:
             return render_detail(request, user, conn, view, error=message, status_code=code)
@@ -165,7 +175,7 @@ def add_payment(
 @router.post("/{doc_id}/payments/{payment_id}/delete", response_class=HTMLResponse)
 def delete_payment(doc_id: UUID, payment_id: UUID, user: User = Depends(current_user)):
     with user_db(user.claims) as conn:
-        view = _load_or_404(conn, doc_id, lock=True)
+        view = _load_or_404(conn, doc_id, write=True, lock=True)
         removed = conn.execute(
             "delete from public.payments where id = %s and document_id = %s",
             [payment_id, doc_id],
@@ -184,7 +194,7 @@ def delete_payment(doc_id: UUID, payment_id: UUID, user: User = Depends(current_
 def create_portal_link(request: Request, doc_id: UUID, user: User = Depends(current_user)):
     """Müşteri bağlantısı üretir. Token yalnızca bu yanıtta görünür; DB'de yalnız SHA-256 özeti."""
     with user_db(user.claims) as conn:
-        view = _load_or_404(conn, doc_id)
+        view = _load_or_404(conn, doc_id, write=True)
         if view.status == "draft":
             raise HTTPException(status_code=409, detail="Taslak belge müşteriyle paylaşılamaz.")
         token = secrets.token_urlsafe(32)
@@ -198,7 +208,8 @@ def create_portal_link(request: Request, doc_id: UUID, user: User = Depends(curr
                 PORTAL_LINK_DAYS,
             ],
         )
-    url = f"{str(request.base_url).rstrip('/')}/p/{token}"
+    base = get_settings().public_base_url or str(request.base_url).rstrip("/")
+    url = f"{base}/p/{token}"
     return templates.TemplateResponse(
         request, "_portal_link.html", {"url": url, "days": PORTAL_LINK_DAYS}
     )
@@ -207,7 +218,7 @@ def create_portal_link(request: Request, doc_id: UUID, user: User = Depends(curr
 @router.post("/{doc_id}/portal-links/revoke", response_class=HTMLResponse)
 def revoke_portal_links(doc_id: UUID, user: User = Depends(current_user)):
     with user_db(user.claims) as conn:
-        _load_or_404(conn, doc_id)
+        _load_or_404(conn, doc_id, write=True)
         conn.execute(
             "update public.portal_tokens set revoked_at = now() "
             "where document_id = %s and revoked_at is null",

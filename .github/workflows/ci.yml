@@ -38,3 +38,17 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t teklifkit .
+      - name: Konteyner açılıyor mu, PDF üretebiliyor mu?
+        run: |
+          docker run -d --name tk -p 10000:10000 \
+            -e DATABASE_URL=postgresql://unused@localhost/unused \
+            -e JWT_SECRET=ci-icin-en-az-32-karakterlik-secret-degeri teklifkit
+          for i in $(seq 1 30); do curl -fs localhost:10000/healthz && break; sleep 1; done
+          curl -fs localhost:10000/login > /dev/null
+          docker exec tk python -c "from app.pdf import render_pdf; assert render_pdf('<p>ÇŞĞİ ₺</p>').startswith(b'%PDF')"

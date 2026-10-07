@@ -9,6 +9,11 @@
     <label>Parola <input type="password" name="password" required autocomplete="current-password"></label>
     <button type="submit">Giriş</button>
   </form>
+  {% if demo %}
+  <form method="post" action="/demo-login" class="stack">
+    <button type="submit" class="secondary">Salt okunur demo hesabıyla gez</button>
+  </form>
+  {% endif %}
   {% if dev_login %}
   <p class="muted">Geliştirme modu: <a href="/dev-login">Supabase olmadan giriş yap</a></p>
   {% endif %}
